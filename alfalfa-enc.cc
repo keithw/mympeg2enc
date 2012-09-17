@@ -17,6 +17,7 @@
 #include "ratectl.hh"
 #include "imageplanes.hh"
 #include "ontheflyratectlpass1.hh"
+#include "ontheflyratectlpass2.hh"
 
 using namespace std;
 
@@ -110,8 +111,8 @@ int main( void )
   my_vid_params.frame_rate_code = 5;
   my_vid_params.interlacing_code = Y4M_ILACE_NONE;
 
-  my_options.bitrate = 10000;
-  my_options.video_buffer_size = 10000;
+  my_options.bitrate = 10000000;
+  my_options.video_buffer_size = 4000;
   my_options.format = MPEG_FORMAT_MPEG2;
   assert( my_options.SetFormatPresets( my_vid_params ) == false );
 
@@ -123,7 +124,7 @@ int main( void )
   my_params.Init( my_options );
   quantizer.Init();
 
-  my_params.still_size = 20000;
+  my_params.still_size = 1000;
 
   /* initialize pictures */
   Picture old_pic( my_params, output, quantizer );
@@ -134,8 +135,8 @@ int main( void )
 
   for ( int row = 0; row < 480; row++ ) {
     for ( int col = 0; col < 640; col++ ) {
-      uint8_t luma = 200;
-      if ( row >= 240 && row <= 360 ) luma = 219;
+      uint8_t luma = 22;
+      if ( row >= 240 && row <= 256 ) luma = (rand() % 219) + 16;
       new_pic.org_img->Plane( 0 )[ row * my_params.phy_width + col ] = luma;
     }
   }
@@ -158,16 +159,34 @@ int main( void )
     mbit->Encode();
   }
 
+  OnTheFlyPass1 rc1( my_params );
+  rc1.Init();
+  rc1.GopSetup( 1, 0 );
+  rc1.PictSetup( new_pic );
+
   new_pic.PutHeaders();
+  new_pic.QuantiseAndCode( rc1 );
+  int pad;
+  rc1.PictUpdate( new_pic, pad );
+  new_pic.PutTrailers( 0 );
+  new_pic.Reconstruct();
 
-  OnTheFlyPass1 my_rate_control( my_params );
-  my_rate_control.Init();
+  /* prepare for second pass */
+  std::deque< Picture *> picture_deque;
+  picture_deque.push_back( &new_pic );
 
-  my_rate_control.PictSetup( new_pic );
+  OnTheFlyPass2 rc2( my_params );
+  rc2.Init();
+  rc2.GopSetup( picture_deque.begin(), picture_deque.end() );
+  rc2.PictSetup( new_pic );
 
-  new_pic.QuantiseAndCode( my_rate_control );
-
-  new_pic.PutTrailers( false );
+  new_pic.DiscardCoding();
+  
+  new_pic.PutHeaders();
+  new_pic.QuantiseAndCode( rc2 );
+  rc2.PictUpdate( new_pic, pad );
+  new_pic.PutTrailers( 0 );
+  new_pic.Reconstruct();
 
   new_pic.CommitCoding();
 
