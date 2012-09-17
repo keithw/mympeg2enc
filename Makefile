@@ -4,7 +4,7 @@ executables = mpeg2enc alfalfa-enc
 
 CC = gcc
 CXX = g++
-CXXFLAGS = -g -Wall -pthread -I. -DHAVE_CONFIG_H
+CXXFLAGS = -g -Wall -pthread -I. -std=c++0x -DHAVE_CONFIG_H
 
 all: $(executables)
 

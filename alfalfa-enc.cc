@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <string>
+#include <string.h>
 
 #include "picture.hh"
 #include "encoderparams.hh"
@@ -35,10 +36,60 @@ public:
   uint64_t BitCount( void ) { return flushed * 8LL; }
 };
 
-class OneShotRateState : public RateCtlState
+void setup_picture( Picture & pic, Picture *const old, PICTURE_CODING type, EncoderParams & my_params )
 {
+  pic.new_seq = pic.end_seq = false;
+  pic.gop_decode = pic.bgrp_decode = 0;
+  pic.decode = 0;
+  pic.present = 0;
+  pic.last_picture = false;
+  pic.finalfield = true;
+  pic.fwd_ref_frame = pic.bwd_ref_frame = NULL;
+  pic.fwd_org = pic.bwd_org = NULL;
+  pic.fwd_rec = pic.bwd_rec = NULL;
+  pic.nb = pic.np = 0;
+  pic.closed_gop = false;
+  pic.dc_prec = my_params.dc_prec;
+
+  ImagePlanes *pic_orig = new ImagePlanes( my_params );
+  memset( pic_orig->Plane( 0 ), 16, my_params.lum_buffer_size );
+  memset( pic_orig->Plane( 1 ), 128, my_params.chrom_buffer_size );
+  memset( pic_orig->Plane( 2 ), 128, my_params.chrom_buffer_size );
+
+  memset( pic.rec_img->Plane( 0 ), 16, my_params.lum_buffer_size );
+  memset( pic.rec_img->Plane( 1 ), 128, my_params.chrom_buffer_size );
+  memset( pic.rec_img->Plane( 2 ), 128, my_params.chrom_buffer_size );
+
+  pic.org_img = pic_orig;
+
+  pic.sxb = pic.syb = 0;
+  pic.secondfield = false;
+  pic.ipflag = false;
+
+  pic.temp_ref = 0;
+  pic.frame_type = type;
+  pic.gop_decode = 0;
+  pic.bgrp_decode = 0;
+  pic.pict_type = type;
+  pic.vbv_delay = 0;
+  pic.pict_struct = FRAME_PICTURE;
   
-};
+  pic.forw_hor_f_code = (type == I_TYPE) ? 15 : my_params.motion_data[0].forw_hor_f_code;
+  pic.forw_vert_f_code = (type == I_TYPE) ? 15 : my_params.motion_data[0].forw_vert_f_code;
+  pic.back_hor_f_code = 15;
+  pic.back_vert_f_code = 15;
+  pic.sxf = my_params.motion_data[0].sxf;
+  pic.syf = my_params.motion_data[0].syf;
+
+  pic.prog_frame = true;
+  pic.frame_pred_dct = true;
+  pic.q_scale_type = 1;
+  pic.intravlc = 0;
+  pic.altscan = false;
+  pic.scan_pattern = zig_zag_scan;
+
+  pic.unit_coeff_threshold = pic.unit_coeff_first = 0;
+}
 
 int main( void )
 {
@@ -68,53 +119,24 @@ int main( void )
   my_params.Init( my_options );
   quantizer.Init();
 
-  /* initialize picture */
-  Picture allblack( my_params, output, quantizer );
-  allblack.new_seq = allblack.end_seq = false;
-  allblack.gop_decode = allblack.bgrp_decode = 0;
-  allblack.decode = 0;
-  allblack.present = 0;
-  allblack.last_picture = false;
-  allblack.finalfield = true;
-  allblack.fwd_ref_frame = NULL;
-  allblack.bwd_ref_frame = NULL;
-  allblack.fwd_org = allblack.bwd_org = NULL;
-  allblack.fwd_rec = allblack.bwd_rec = NULL;
-  allblack.nb = allblack.np = 0;
-  allblack.closed_gop = false;
-  allblack.dc_prec = my_params.dc_prec;
+  /* initialize pictures */
+  Picture old_pic( my_params, output, quantizer );
+  Picture new_pic( my_params, output, quantizer );
 
-  ImagePlanes allblack_orig( my_params );
+  setup_picture( old_pic, nullptr, I_TYPE, my_params );
+  setup_picture( new_pic, nullptr, P_TYPE, my_params );
 
-  allblack.org_img = &allblack_orig;
+  new_pic.fwd_ref_frame = &old_pic;
+  new_pic.fwd_org = old_pic.org_img;
+  new_pic.fwd_rec = old_pic.rec_img;
 
-  allblack.sxb = allblack.syb = 0;
-  allblack.secondfield = false;
-  allblack.ipflag = false;
+  new_pic.MotionSubSampledLum();
 
-  allblack.temp_ref = 0;
-  allblack.frame_type = I_TYPE;
-  allblack.gop_decode = 0;
-  allblack.bgrp_decode = 0;
-  allblack.pict_type = I_TYPE;
-  allblack.vbv_delay = 0;
-  allblack.pict_struct = FRAME_PICTURE;
-  
-  allblack.forw_hor_f_code = 15; //my_params.motion_data[0].forw_hor_f_code;
-  allblack.forw_vert_f_code = 15; //my_params.motion_data[0].forw_vert_f_code;
-  allblack.back_hor_f_code = 15;
-  allblack.back_vert_f_code = 15;
-  allblack.sxf = my_params.motion_data[0].sxf;
-  allblack.syf = my_params.motion_data[0].syf;
-
-  allblack.prog_frame = true;
-  allblack.frame_pred_dct = true;
-  allblack.q_scale_type = 1;
-  allblack.intravlc = 0;
-  allblack.altscan = false;
-  allblack.scan_pattern = zig_zag_scan;
-
-  allblack.unit_coeff_threshold = allblack.unit_coeff_first = 0;
+  for ( auto mbit = new_pic.mbinfo.begin();
+	mbit != new_pic.mbinfo.end();
+	mbit++ ) {
+    mbit->MotionEstimateAndModeSelect();
+  }
 
   return 0;
 }
