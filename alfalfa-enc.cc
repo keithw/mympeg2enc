@@ -16,6 +16,7 @@
 #include "tables.h"
 #include "ratectl.hh"
 #include "imageplanes.hh"
+#include "ontheflyratectlpass1.hh"
 
 using namespace std;
 
@@ -109,8 +110,8 @@ int main( void )
   my_vid_params.frame_rate_code = 5;
   my_vid_params.interlacing_code = Y4M_ILACE_NONE;
 
-  my_options.bitrate = 1;
-  my_options.video_buffer_size = 0;
+  my_options.bitrate = 10000;
+  my_options.video_buffer_size = 10000;
   my_options.format = MPEG_FORMAT_MPEG2;
   assert( my_options.SetFormatPresets( my_vid_params ) == false );
 
@@ -122,12 +123,19 @@ int main( void )
   my_params.Init( my_options );
   quantizer.Init();
 
+  my_params.still_size = 20000;
+
   /* initialize pictures */
   Picture old_pic( my_params, output, quantizer );
   Picture new_pic( my_params, output, quantizer );
 
   setup_picture( old_pic, nullptr, I_TYPE, my_params );
   setup_picture( new_pic, nullptr, P_TYPE, my_params );
+
+  memset( new_pic.org_img->Plane( 0 ), 192, 640*100 );
+  memset( new_pic.org_img->Plane( 0 ), 99, 640*75 );
+  memset( new_pic.org_img->Plane( 0 ), 80, 640*50 );
+  memset( new_pic.org_img->Plane( 0 ), 30, 640*25 );
 
   new_pic.fwd_ref_frame = &old_pic;
   new_pic.fwd_org = old_pic.org_img;
@@ -149,7 +157,16 @@ int main( void )
 
   new_pic.PutHeaders();
 
-  //  new_pic.CommitCoding();
+  OnTheFlyPass1 my_rate_control( my_params );
+  my_rate_control.Init();
+
+  my_rate_control.PictSetup( new_pic );
+
+  new_pic.QuantiseAndCode( my_rate_control );
+
+  new_pic.PutTrailers( false );
+
+  new_pic.CommitCoding();
 
   fprintf( stderr, "Writing %d bytes... ", (int)output.str().size() );
   fwrite( output.str().data(), output.str().size(), 1, stdout );
