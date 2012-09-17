@@ -132,10 +132,13 @@ int main( void )
   setup_picture( old_pic, nullptr, I_TYPE, my_params );
   setup_picture( new_pic, nullptr, P_TYPE, my_params );
 
-  memset( new_pic.org_img->Plane( 0 ), 192, 640*100 );
-  memset( new_pic.org_img->Plane( 0 ), 99, 640*75 );
-  memset( new_pic.org_img->Plane( 0 ), 80, 640*50 );
-  memset( new_pic.org_img->Plane( 0 ), 30, 640*25 );
+  for ( int row = 0; row < 480; row++ ) {
+    for ( int col = 0; col < 640; col++ ) {
+      uint8_t luma = 200;
+      if ( row >= 240 && row <= 360 ) luma = 219;
+      new_pic.org_img->Plane( 0 )[ row * my_params.phy_width + col ] = luma;
+    }
+  }
 
   new_pic.fwd_ref_frame = &old_pic;
   new_pic.fwd_org = old_pic.org_img;
