@@ -34,11 +34,14 @@ public:
   }
 
   uint64_t BitCount( void ) { return flushed * 8LL; }
+
+  const string & str( void ) const { return _buf; }
 };
 
 void setup_picture( Picture & pic, Picture *const old, PICTURE_CODING type, EncoderParams & my_params )
 {
-  pic.new_seq = pic.end_seq = false;
+  pic.new_seq = pic.end_seq = true; /* XXX */
+  pic.gop_start = true; /* XXX */
   pic.gop_decode = pic.bgrp_decode = 0;
   pic.decode = 0;
   pic.present = 0;
@@ -107,7 +110,7 @@ int main( void )
   my_vid_params.interlacing_code = Y4M_ILACE_NONE;
 
   my_options.bitrate = 1;
-  my_options.video_buffer_size = 4000;
+  my_options.video_buffer_size = 0;
   my_options.format = MPEG_FORMAT_MPEG2;
   assert( my_options.SetFormatPresets( my_vid_params ) == false );
 
@@ -137,6 +140,20 @@ int main( void )
 	mbit++ ) {
     mbit->MotionEstimateAndModeSelect();
   }
+
+  for ( auto mbit = new_pic.mbinfo.begin();
+	mbit != new_pic.mbinfo.end();
+	mbit++ ) {
+    mbit->Encode();
+  }
+
+  new_pic.PutHeaders();
+
+  //  new_pic.CommitCoding();
+
+  fprintf( stderr, "Writing %d bytes... ", (int)output.str().size() );
+  fwrite( output.str().data(), output.str().size(), 1, stdout );
+  fprintf( stderr, "done.\n" );
 
   return 0;
 }
