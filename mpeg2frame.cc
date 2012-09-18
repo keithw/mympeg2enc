@@ -150,6 +150,8 @@ std::string MPEG2Frame::diff_from( const MPEG2Frame &existing, const size_t len 
 {
   /* encode */
 
+  _output.clear();
+
   EncoderParams my_params( _params );
 
   my_params.still_size = len;
@@ -198,4 +200,6 @@ std::string MPEG2Frame::diff_from( const MPEG2Frame &existing, const size_t len 
   _pic->Reconstruct();
 
   _pic->CommitCoding();
+
+  return _output.str();
 }

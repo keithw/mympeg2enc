@@ -39,9 +39,11 @@ private:
     uint64_t BitCount( void ) { return flushed * 8LL; }
     
     const std::string & str( void ) const { return _buf; }
+
+    void clear( void ) { _buf.clear(); }
   };
 
-  StringWriter _output;
+  mutable StringWriter _output; /* need this so we can encode within diff_from() */
 
   static MPEG2EncOptions make_options( const int height, const int width );
 
