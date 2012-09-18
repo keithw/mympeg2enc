@@ -373,6 +373,8 @@ void OnTheFlyPass2::InitPict(Picture &picture)
         rel_error  > overshoot_tolerance
     || (rel_error < undershoot_tolerance && picture.ABQ > scale_quant_floor  );
 
+  reencode = true; /* always reencode */
+
   fprintf( stderr, "RE = %.2f OT=%.2f UT=%.02f RENC=%d\n", rel_error, overshoot_tolerance, undershoot_tolerance, reencode );
   // If re-encoding to hit a target we adjust *relative* to previous (off-target) base quantisation
   // Since there is often a tendency for systematically under or over correct we maintain a moving

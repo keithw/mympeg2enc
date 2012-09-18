@@ -54,17 +54,6 @@ static void setup_picture( Picture & pic, Picture *const old, const PICTURE_CODI
 
   ImagePlanes *pic_orig = new ImagePlanes( my_params );
 
-  /* user will have to initialize image data */
-  /*
-  memset( pic_orig->Plane( 0 ), 128, my_params.lum_buffer_size );
-  memset( pic_orig->Plane( 1 ), 128, my_params.chrom_buffer_size );
-  memset( pic_orig->Plane( 2 ), 128, my_params.chrom_buffer_size );
-
-  memset( pic.rec_img->Plane( 0 ), 128, my_params.lum_buffer_size );
-  memset( pic.rec_img->Plane( 1 ), 128, my_params.chrom_buffer_size );
-  memset( pic.rec_img->Plane( 2 ), 128, my_params.chrom_buffer_size );
-  */
-
   pic.org_img = pic_orig;
 
   pic.sxb = pic.syb = 0;
@@ -219,7 +208,7 @@ std::string MPEG2Frame::diff_from( const MPEG2Frame &existing, const size_t len 
   int pad;
   rc1.PictUpdate( *_pic, pad );
   _pic->PutTrailers( 0 );
-  _pic->Reconstruct();
+  //  _pic->Reconstruct();
 
   /* prepare for second pass */
   std::deque< Picture *> picture_deque;
@@ -236,7 +225,7 @@ std::string MPEG2Frame::diff_from( const MPEG2Frame &existing, const size_t len 
   _pic->QuantiseAndCode( rc2 );
   rc2.PictUpdate( *_pic, pad );
   _pic->PutTrailers( 0 );
-  _pic->Reconstruct();
+  //  _pic->Reconstruct();
 
   _pic->CommitCoding();
 
