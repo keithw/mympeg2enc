@@ -54,6 +54,7 @@
 #include "quantize.hh"
 
 #include <stdlib.h>
+#include <stdio.h>
 
 /********************
  * 
@@ -174,6 +175,7 @@ void MacroBlock::Quantize( Quantizer &quant  )
                                             picture->scan_pattern,
                                             picture->unit_coeff_first,
                                             picture->unit_coeff_threshold);
+                if ( zero ) { fprintf( stderr, "Killing block %d\n", block ); }
                 cbp &= ~(zero<<(BLOCK_COUNT-1-block));
             }
         }

@@ -207,6 +207,8 @@ void OnTheFlyPass2::InitGOP(  )
 			  encparams.stream_frames * encparams.target_bitrate /  encparams.frame_rate ;
 		  m_picture_xhi_bitrate =
 			  (field_rate/fields_per_pict) * stream_bits / encparams.stream_frames;
+          fprintf( stderr, "KJW undershoot = %f, stream_bits = %f\n",
+                   undershoot, stream_bits );
 	  }
 	  else
 	  {
@@ -371,13 +373,14 @@ void OnTheFlyPass2::InitPict(Picture &picture)
         rel_error  > overshoot_tolerance
     || (rel_error < undershoot_tolerance && picture.ABQ > scale_quant_floor  );
 
-  //fprintf( stderr, "RE = %.2f OT=%.2f UT=%.02f RENC=%d\n", rel_error, overshoot_tolerance, undershoot_tolerance, reencode );
+  fprintf( stderr, "RE = %.2f OT=%.2f UT=%.02f RENC=%d\n", rel_error, overshoot_tolerance, undershoot_tolerance, reencode );
   // If re-encoding to hit a target we adjust *relative* to previous (off-target) base quantisation
   // Since there is often a tendency for systematically under or over correct we maintain a moving
   // average of the ratio target_bits/actual_bits after re-encoding ansd use this to correct our
   // correction 
   
   double target_ABQ = picture.ABQ * actual_bits / target_bits;
+
   // If the correction of the correction looks reasonable... use it...
   double debiased_target_ABQ = target_ABQ * mean_reencode_A_T_ratio;
   if( actual_bits > target_bits &&  debiased_target_ABQ > picture.ABQ ||
@@ -385,6 +388,8 @@ void OnTheFlyPass2::InitPict(Picture &picture)
   {
      target_ABQ = debiased_target_ABQ;
   }
+
+  fprintf( stderr, "KJW: new target_ABQ = %f\n", target_ABQ );
 
   double raw_base_Q;
   if( scale_quant_floor < target_ABQ )
@@ -405,10 +410,14 @@ void OnTheFlyPass2::InitPict(Picture &picture)
   base_Q = ClipQuant( picture.q_scale_type,
                       fmax( encparams.quant_floor, raw_base_Q ) );
 
+  fprintf( stderr, "floor = %f, raw_base_Q = %f, base_q = %f\n",
+           encparams.quant_floor, raw_base_Q, base_Q );
+
   cur_int_base_Q = floor( base_Q + 0.5 );
   rnd_error = 0.0;
   cur_mquant = ScaleQuant( picture.q_scale_type, cur_int_base_Q );
 
+  fprintf( stderr, "cur_mquant = %d\n", cur_mquant );
 
   mjpeg_info( "%s: %d - reencode actual %d (%.1f) target %d Q=%.1f BV  = %.2f cbr=%.0f",
                 reencode ? "RENC" : "SKIP",

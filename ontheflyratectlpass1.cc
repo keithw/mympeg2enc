@@ -368,9 +368,9 @@ void OnTheFlyPass1::InitPict(Picture &picture)
         Xsum += N[i]*Xhi[i];
     vbuf_fullness = ratectl_vbuf[picture.pict_type];
     double first_weight[NUM_PICT_TYPES];
-    first_weight[I_TYPE] = 1.0;
-    first_weight[P_TYPE] = 1.7;
-    first_weight[B_TYPE] = 1.7*2.0;
+    first_weight[I_TYPE] = 1000;
+    first_weight[P_TYPE] = 1;
+    first_weight[B_TYPE] = 1000;
 
     double gop_frac = 0.0;
     if( first_encountered[picture.pict_type] )
@@ -464,6 +464,7 @@ void OnTheFlyPass1::PictUpdate( Picture &picture, int &padding_needed)
 	int frame_overshoot;
 	actual_bits = picture.EncodedSize();
 	frame_overshoot = (int)actual_bits-(int)target_bits;
+    fprintf( stderr, "KJW: overshoot = %d\n", frame_overshoot );
 	/* For the virtual buffers for quantisation feedback it is the
 	   actual under/overshoot *including* padding.  Otherwise the
 	   buffers go zero.
@@ -563,6 +564,9 @@ void OnTheFlyPass1::PictUpdate( Picture &picture, int &padding_needed)
 
 	double actual_Xhi = actual_bits * picture.AQ;
     picture.SetComplexity( actual_Xhi );
+
+    fprintf( stderr, "KJW: sum_base_Q = %f, sum_actual_Q = %d, actual_Xhi = %f\n",
+             sum_base_Q, sum_actual_Q, actual_Xhi );
 
     /* To handle longer sequences with little picture content
        where I, B and P frames are of unusually similar size we

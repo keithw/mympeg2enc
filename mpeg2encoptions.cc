@@ -545,14 +545,18 @@ bool MPEG2EncOptions::SetFormatPresets( const MPEG2EncInVidParams &strm )
 		}
 		else
 		{
+            /*
 			mjpeg_error("SVCD normal resolution stills must be 480x576 (PAL) or 480x480 (NTSC)");
 			mjpeg_error_exit1( "SVCD high resolution stills must be 704x576 (PAL) or 704x480 (NTSC)");
+            */
 		}
 
+        /*
 		if( still_size < 30*1024 || still_size > 200*1024 )
 		{
 			mjpeg_error_exit1( "SVCD resolution stills must be >= 30KB and <= 200KB each");
 		}
+        */
 
 
 		seq_hdr_every_gop = 1;

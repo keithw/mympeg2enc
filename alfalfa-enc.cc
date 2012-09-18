@@ -45,8 +45,8 @@ void setup_picture( Picture & pic, Picture *const old, PICTURE_CODING type, Enco
   pic.new_seq = pic.end_seq = true; /* XXX */
   pic.gop_start = true; /* XXX */
   pic.gop_decode = pic.bgrp_decode = 0;
-  pic.decode = 0;
-  pic.present = 0;
+  pic.decode = 1;
+  pic.present = 1;
   pic.last_picture = false;
   pic.finalfield = true;
   pic.fwd_ref_frame = pic.bwd_ref_frame = NULL;
@@ -57,11 +57,11 @@ void setup_picture( Picture & pic, Picture *const old, PICTURE_CODING type, Enco
   pic.dc_prec = my_params.dc_prec;
 
   ImagePlanes *pic_orig = new ImagePlanes( my_params );
-  memset( pic_orig->Plane( 0 ), 16, my_params.lum_buffer_size );
+  memset( pic_orig->Plane( 0 ), 128, my_params.lum_buffer_size );
   memset( pic_orig->Plane( 1 ), 128, my_params.chrom_buffer_size );
   memset( pic_orig->Plane( 2 ), 128, my_params.chrom_buffer_size );
 
-  memset( pic.rec_img->Plane( 0 ), 16, my_params.lum_buffer_size );
+  memset( pic.rec_img->Plane( 0 ), 128, my_params.lum_buffer_size );
   memset( pic.rec_img->Plane( 1 ), 128, my_params.chrom_buffer_size );
   memset( pic.rec_img->Plane( 2 ), 128, my_params.chrom_buffer_size );
 
@@ -93,10 +93,11 @@ void setup_picture( Picture & pic, Picture *const old, PICTURE_CODING type, Enco
   pic.altscan = false;
   pic.scan_pattern = zig_zag_scan;
 
-  pic.unit_coeff_threshold = pic.unit_coeff_first = 0;
+  pic.unit_coeff_threshold = 30;
+  pic.unit_coeff_first = 0;
 }
 
-int main( void )
+int main( int argc, char *argv[] )
 {
   init_motion_search();
   init_transform();
@@ -107,14 +108,17 @@ int main( void )
   MPEG2EncInVidParams my_vid_params;
   my_vid_params.horizontal_size = 640;
   my_vid_params.vertical_size = 480;
-  my_vid_params.aspect_ratio_code = 1; /* square pixels */
+  my_vid_params.aspect_ratio_code = 2;
   my_vid_params.frame_rate_code = 5;
   my_vid_params.interlacing_code = Y4M_ILACE_NONE;
 
-  my_options.bitrate = 10000000;
   my_options.video_buffer_size = 4000;
-  my_options.format = MPEG_FORMAT_MPEG2;
+  my_options.bitrate = -1;
+  my_options.format = MPEG_FORMAT_SVCD_STILL;
   assert( my_options.SetFormatPresets( my_vid_params ) == false );
+
+  my_options.stream_frames = 1;
+  my_options.ignore_constraints = true;
 
   EncoderParams my_params( my_options );
 
@@ -124,7 +128,9 @@ int main( void )
   my_params.Init( my_options );
   quantizer.Init();
 
-  my_params.still_size = 1000;
+  my_params.still_size = atoi( argv[ 1 ] );
+  my_params.coding_tolerance = 0;
+  my_params.vbv_buffer_still_size = atoi( argv[ 1 ] );
 
   /* initialize pictures */
   Picture old_pic( my_params, output, quantizer );
@@ -133,11 +139,14 @@ int main( void )
   setup_picture( old_pic, nullptr, I_TYPE, my_params );
   setup_picture( new_pic, nullptr, P_TYPE, my_params );
 
+  int total_pixels = 640 * 480;
+  int pixels_hit = 0;
   for ( int row = 0; row < 480; row++ ) {
     for ( int col = 0; col < 640; col++ ) {
-      uint8_t luma = 22;
-      if ( row >= 240 && row <= 256 ) luma = (rand() % 219) + 16;
-      new_pic.org_img->Plane( 0 )[ row * my_params.phy_width + col ] = luma;
+      int pixel = 16 + 219;
+      new_pic.org_img->Plane( 0 )[ row * my_params.phy_width + col ] = pixel;
+
+      pixels_hit++;
     }
   }
 
@@ -153,16 +162,16 @@ int main( void )
     mbit->MotionEstimateAndModeSelect();
   }
 
+  OnTheFlyPass1 rc1( my_params );
+  rc1.Init();
+  rc1.GopSetup( 1, 0 );
+  rc1.PictSetup( new_pic );
+
   for ( auto mbit = new_pic.mbinfo.begin();
 	mbit != new_pic.mbinfo.end();
 	mbit++ ) {
     mbit->Encode();
   }
-
-  OnTheFlyPass1 rc1( my_params );
-  rc1.Init();
-  rc1.GopSetup( 1, 0 );
-  rc1.PictSetup( new_pic );
 
   new_pic.PutHeaders();
   new_pic.QuantiseAndCode( rc1 );
@@ -170,6 +179,8 @@ int main( void )
   rc1.PictUpdate( new_pic, pad );
   new_pic.PutTrailers( 0 );
   new_pic.Reconstruct();
+
+  fprintf( stderr, "Intra: %f\n", new_pic.IntraCodedBlocks() );
 
   /* prepare for second pass */
   std::deque< Picture *> picture_deque;
@@ -181,12 +192,22 @@ int main( void )
   rc2.PictSetup( new_pic );
 
   new_pic.DiscardCoding();
+
+  /*
+  for ( auto mbit = new_pic.mbinfo.begin();
+	mbit != new_pic.mbinfo.end();
+	mbit++ ) {
+    mbit->Encode();
+  }
+  */
   
   new_pic.PutHeaders();
   new_pic.QuantiseAndCode( rc2 );
   rc2.PictUpdate( new_pic, pad );
   new_pic.PutTrailers( 0 );
   new_pic.Reconstruct();
+
+  fprintf( stderr, "Intra: %f\n", new_pic.IntraCodedBlocks() );
 
   new_pic.CommitCoding();
 

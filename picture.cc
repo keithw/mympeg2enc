@@ -60,6 +60,7 @@
 #include "tables.h"
 #include "imageplanes.hh"
 
+#include <stdio.h>
 
 Picture::Picture( EncoderParams &_encparams, 
                   ElemStrmWriter &writer, 
@@ -534,6 +535,8 @@ void Picture::QuantiseAndCode(RateCtl &ratectl)
     int MBAinc;
     MacroBlock *cur_mb = 0;
 	int mquant_pred = ratectl.InitialMacroBlockQuant();
+
+    fprintf( stderr, "mquant_pred = %d\n", mquant_pred );
 
 	k = 0;
     
