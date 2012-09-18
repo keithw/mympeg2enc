@@ -182,7 +182,7 @@ public:
 	/* multiple-reader/single-writer channels Synchronisation  
 	   sync only: no data is "read"/"written"
 	 */
-    Picture *fwd_ref_frame;
+    const Picture *fwd_ref_frame;
     Picture *bwd_ref_frame;     // 0 if Not B_TYPE
     
 	/* picture encoding source data  */

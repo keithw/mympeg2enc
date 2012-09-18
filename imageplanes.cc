@@ -11,7 +11,7 @@
  * sloppy about some of the candidates they consider.
  *
  ********************/
-ImagePlanes::ImagePlanes( EncoderParams &encparams )
+ImagePlanes::ImagePlanes( const EncoderParams &encparams )
 {
     for( int c = 0; c < NUM_PLANES; ++c )
     { 

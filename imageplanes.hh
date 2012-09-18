@@ -38,7 +38,7 @@ class ImagePlanes
     public:
         enum Planes_Enum { YPLANE=0, UPLANE=1, VPLANE=2, Y22=3, Y44=4, NUM_PLANES };
         
-        ImagePlanes( EncoderParams &encoder );
+        ImagePlanes( const EncoderParams &encoder );
         ~ImagePlanes();
 
         inline uint8_t *Plane( unsigned int plane) { return planes[plane]; }
