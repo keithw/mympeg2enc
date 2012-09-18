@@ -21,7 +21,7 @@
 #include "ontheflyratectlpass1.hh"
 #include "ontheflyratectlpass2.hh"
 
-void initalize_mpeg2( void )
+void initialize_mpeg2( void )
 {
   static bool initialized = false;
   if ( initialized ) {
@@ -100,6 +100,8 @@ MPEG2EncOptions MPEG2Frame::make_options( const int height, const int width )
 {
   /* set up MPEG-2 parameters */
 
+  initialize_mpeg2();
+
   MPEG2EncOptions my_options;
 
   MPEG2EncInVidParams my_vid_params;
@@ -141,6 +143,33 @@ MPEG2Frame::MPEG2Frame( const int height, const int width )
   setup_picture( *_pic, NULL, P_TYPE, _params );
 }
 
+MPEG2Frame::MPEG2Frame( const int height, const int width, uint8_t shade )
+  : _options( make_options( height, width ) ),
+    _params( _options ),
+    _pic( NULL ),
+    _quantizer( _params ),
+    _height( height ),
+    _width( width ),
+    _output()
+{
+  _params.Init( _options );
+  _quantizer.Init();
+
+  _params.coding_tolerance = 0;
+
+  _pic = new Picture( _params, _output, _quantizer );
+
+  /* set up picture */
+  setup_picture( *_pic, NULL, P_TYPE, _params );
+
+  memset( _pic->org_img->Plane( 0 ), shade, _params.lum_buffer_size );
+  memset( _pic->org_img->Plane( 1 ), 128, _params.chrom_buffer_size );
+  memset( _pic->org_img->Plane( 2 ), 128, _params.chrom_buffer_size );  
+  memset( _pic->rec_img->Plane( 0 ), shade, _params.lum_buffer_size );
+  memset( _pic->rec_img->Plane( 1 ), 128, _params.chrom_buffer_size );
+  memset( _pic->rec_img->Plane( 2 ), 128, _params.chrom_buffer_size );  
+}
+
 MPEG2Frame::~MPEG2Frame()
 {
   delete _pic;
@@ -151,6 +180,9 @@ std::string MPEG2Frame::diff_from( const MPEG2Frame &existing, const size_t len 
   /* encode */
 
   _output.clear();
+
+  assert( _height == existing.height() );
+  assert( _width == existing.width() );
 
   EncoderParams my_params( _params );
 
@@ -164,7 +196,13 @@ std::string MPEG2Frame::diff_from( const MPEG2Frame &existing, const size_t len 
 
   _pic->MotionSubSampledLum();
 
-    OnTheFlyPass1 rc1( my_params );
+  for ( auto mbit = _pic->mbinfo.begin();
+	mbit != _pic->mbinfo.end();
+	mbit++ ) {
+    mbit->MotionEstimateAndModeSelect();
+  }
+
+  OnTheFlyPass1 rc1( my_params );
   rc1.Init();
   rc1.GopSetup( 1, 0 );
   rc1.PictSetup( *_pic );

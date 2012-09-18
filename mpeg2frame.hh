@@ -49,9 +49,12 @@ private:
 
 public:
   MPEG2Frame( const int height, const int width );
+  MPEG2Frame( const int height, const int width, uint8_t shade );
   ~MPEG2Frame();
 
   const Picture *get_pic( void ) const { return _pic; }
+  int height( void ) const { return _height; }
+  int width( void ) const { return _width; }
 
   /* interface for Network::Transport */
   void subtract( const MPEG2Frame *prefix ) {}
