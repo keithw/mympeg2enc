@@ -37,8 +37,9 @@ void initialize_mpeg2( void )
 
 static void setup_picture( Picture & pic, Picture *const old, const PICTURE_CODING type, const EncoderParams & my_params )
 {
-  pic.new_seq = pic.end_seq = true; /* XXX */
-  pic.gop_start = true; /* XXX */
+  pic.new_seq = true;  /* XXX */
+  pic.end_seq = false;
+  pic.gop_start = false; /* XXX */
   pic.gop_decode = pic.bgrp_decode = 0;
   pic.decode = 1;
   pic.present = 1;
